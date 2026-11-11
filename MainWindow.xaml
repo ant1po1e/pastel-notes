@@ -1,0 +1,257 @@
+<Window x:Class="PastelNotes.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PastelNotes.ViewModels"
+        xmlns:views="clr-namespace:PastelNotes.Views"
+        Title="Pastel Notes" Height="780" Width="1240" MinHeight="520" MinWidth="820"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource AppBgBrush}"
+        Foreground="{StaticResource TextBrush}"
+        FontFamily="{StaticResource AppFont}"
+        FontSize="14" FontWeight="Medium"
+        UseLayoutRounding="True"
+        Closing="Window_Closing">
+
+    <Window.InputBindings>
+        <KeyBinding Key="B" Modifiers="Control" Command="{Binding ToggleSidebarCommand}"/>
+    </Window.InputBindings>
+
+    <Window.Resources>
+
+        <DataTemplate x:Key="NoteTemplate" DataType="{x:Type vm:NoteViewModel}">
+            <Grid x:Name="NoteRoot" Margin="0,2">
+                <Button Style="{StaticResource FlatButton}"
+                        Command="{Binding DataContext.SelectNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding}">
+                    <Border x:Name="Pill" CornerRadius="8" Padding="12,8" Background="Transparent">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="13.5"
+                                       TextTrimming="CharacterEllipsis" Margin="0,0,28,0"/>
+                            <TextBlock Text="{Binding UpdatedText}" FontSize="11" Margin="0,1,0,0"
+                                       Foreground="{StaticResource MutedBrush}"/>
+                        </StackPanel>
+                    </Border>
+                </Button>
+                <Button x:Name="DelBtn" Style="{StaticResource IconButton}" Content="&#xE74D;"
+                        HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0" Opacity="0"
+                        ToolTip="Delete note"
+                        Command="{Binding DataContext.DeleteNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding}"/>
+            </Grid>
+            <DataTemplate.Triggers>
+                <Trigger SourceName="NoteRoot" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Pill" Property="Background" Value="#88F1E9FA"/>
+                    <Setter TargetName="DelBtn" Property="Opacity" Value="1"/>
+                </Trigger>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter TargetName="Pill" Property="Background" Value="{Binding Folder.SoftBrush}"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <DataTemplate x:Key="FolderTemplate" DataType="{x:Type vm:FolderViewModel}">
+            <Border Background="White" CornerRadius="12" Margin="0,0,0,12" Padding="0,0,0,2"
+                    Effect="{StaticResource SoftShadow}">
+                <StackPanel>
+
+                    <Border x:Name="Header" Background="{Binding SoftBrush}" CornerRadius="12" Padding="8,8,8,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <ToggleButton Grid.Column="0" Style="{StaticResource ArrowToggle}"
+                                          IsChecked="{Binding IsExpanded, Mode=TwoWay}"/>
+
+                            <ToggleButton x:Name="ColorBtn" Grid.Column="1" Style="{StaticResource ColorDotToggle}"
+                                          Background="{Binding Brush}" Margin="2,0,8,0"
+                                          ToolTip="Change folder color"
+                                          IsChecked="{Binding IsPaletteOpen, Mode=TwoWay}"/>
+
+                            <Popup IsOpen="{Binding IsPaletteOpen, Mode=TwoWay}" StaysOpen="False"
+                                   PlacementTarget="{Binding ElementName=ColorBtn}" Placement="Bottom"
+                                   AllowsTransparency="True" PopupAnimation="Fade">
+                                <Border Background="White" CornerRadius="10" Padding="10" Margin="10"
+                                        Effect="{StaticResource SoftShadow}">
+                                    <ItemsControl ItemsSource="{Binding Palette}" Width="200">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Style="{StaticResource ColorDotButton}"
+                                                        Background="{Binding Converter={StaticResource HexToBrush}}"
+                                                        CommandParameter="{Binding}"
+                                                        Command="{Binding DataContext.SetColorCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Border>
+                            </Popup>
+
+                            <Grid Grid.Column="2" VerticalAlignment="Center">
+                                <TextBlock x:Name="NameText" Text="{Binding Name}" FontWeight="Bold" FontSize="14.5"
+                                           TextTrimming="CharacterEllipsis" Cursor="Hand"
+                                           MouseLeftButtonDown="FolderName_MouseDown"/>
+                                <TextBox x:Name="NameBox" Style="{StaticResource BlockInput}"
+                                         Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="#B3FFFFFF" FontSize="14.5" FontWeight="Bold"
+                                         TextWrapping="NoWrap" Visibility="Collapsed"
+                                         IsVisibleChanged="NameBox_IsVisibleChanged"
+                                         LostFocus="NameBox_LostFocus"
+                                         KeyDown="NameBox_KeyDown"/>
+                            </Grid>
+
+                            <StackPanel x:Name="Actions" Grid.Column="3" Orientation="Horizontal" Opacity="0">
+                                <Button Style="{StaticResource IconButton}" Content="&#xE70F;" ToolTip="Rename"
+                                        Command="{Binding RenameCommand}"/>
+                                <Button Style="{StaticResource IconButton}" Content="&#xE710;" ToolTip="New note"
+                                        Command="{Binding DataContext.AddNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}"/>
+                                <Button Style="{StaticResource IconButton}" Content="&#xE74D;" ToolTip="Delete folder"
+                                        Command="{Binding DataContext.DeleteFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <ItemsControl ItemsSource="{Binding Notes}" ItemTemplate="{StaticResource NoteTemplate}"
+                                  Margin="6,4,6,6" Focusable="False"
+                                  Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}"/>
+                </StackPanel>
+            </Border>
+
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                    <Setter TargetName="NameText" Property="Visibility" Value="Collapsed"/>
+                    <Setter TargetName="NameBox" Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+                <Trigger SourceName="Header" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Actions" Property="Opacity" Value="1"/>
+                </Trigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <Style x:Key="OpenSidebarButton" TargetType="Button" BasedOn="{StaticResource PillButton}">
+            <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="10,9"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSidebarOpen}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="EmptyStateStyle" TargetType="StackPanel">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasSelection}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="SidebarColumn" Width="310" MinWidth="230" MaxWidth="480"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Background="{StaticResource SidebarBrush}"
+                Visibility="{Binding IsSidebarOpen, Converter={StaticResource BoolToVis}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="20,22,16,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Pastel Notes" FontSize="21" FontWeight="Bold"/>
+                        <TextBlock Text="pretty &amp; tidy notes" FontSize="11.5" Foreground="{StaticResource MutedBrush}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="+ Folder"
+                            Command="{Binding AddFolderCommand}"/>
+                    <Button Grid.Column="2" Style="{StaticResource IconButton}" Content="&#xE76B;"
+                            Margin="8,0,0,0" ToolTip="Hide sidebar (Ctrl+B)"
+                            Command="{Binding ToggleSidebarCommand}"/>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Folders}" ItemTemplate="{StaticResource FolderTemplate}"
+                                  Margin="14,0,8,16" Focusable="False"/>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <GridSplitter x:Name="Splitter" Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="Transparent"
+                      ResizeBehavior="PreviousAndNext"/>
+
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.RowSpan="2" Style="{StaticResource EmptyStateStyle}" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="✿" FontSize="54" Foreground="{StaticResource LavenderBrush}" HorizontalAlignment="Center"/>
+                <TextBlock Text="Select a note in the sidebar" FontSize="18" FontWeight="Bold" Margin="0,8,0,2"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="or create a new folder &amp; note" Foreground="{StaticResource MutedBrush}"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <Grid Grid.Row="1" Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="40,26,40,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <Border Background="{Binding SelectedNote.Folder.SoftBrush}" CornerRadius="6"
+                                Padding="10,3" HorizontalAlignment="Left">
+                            <TextBlock Text="{Binding SelectedNote.Folder.Name}" FontSize="12" FontWeight="Bold"/>
+                        </Border>
+                        <TextBox x:Name="TitleBox" Style="{StaticResource BlockInput}"
+                                 Text="{Binding SelectedNote.Title, UpdateSourceTrigger=PropertyChanged}"
+                                 FontSize="32" FontWeight="Bold" Margin="-2,4,0,0"
+                                 KeyDown="TitleBox_KeyDown"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="1" Style="{StaticResource PillButton}" Content="Export .md"
+                            VerticalAlignment="Top" Margin="12,6,0,0"
+                            Command="{Binding ExportCommand}"/>
+                </Grid>
+
+                <views:NoteEditorView x:Name="EditorHost" Grid.Row="1" DataContext="{Binding Editor}"/>
+            </Grid>
+
+            <Button Grid.Row="0" Style="{StaticResource OpenSidebarButton}" Content="&#xE700;"
+                    HorizontalAlignment="Left" VerticalAlignment="Top" Margin="40,22,0,0"
+                    ToolTip="Show sidebar (Ctrl+B)"
+                    Command="{Binding ToggleSidebarCommand}"/>
+        </Grid>
+    </Grid>
+</Window>
