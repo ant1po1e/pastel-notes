@@ -8,7 +8,19 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>PastelNotes</RootNamespace>
     <AssemblyName>PastelNotes</AssemblyName>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <ServerGarbageCollector>false</ServerGarbageCollector>
+    <TieredPGO>false</TieredPGO>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="5" />
+  </ItemGroup>
 
   <ItemGroup>
     <Resource Include="Fonts\*.ttf" />

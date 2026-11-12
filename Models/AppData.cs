@@ -9,6 +9,7 @@ public class AppData
     public List<FolderData> Folders { get; set; } = new();
     public Guid? LastNoteId { get; set; }
     public bool IsSidebarOpen { get; set; } = true;
+    public bool IsDarkMode { get; set; }
 }
 
 public class FolderData

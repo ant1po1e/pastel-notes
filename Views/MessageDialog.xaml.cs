@@ -30,20 +30,14 @@ public partial class MessageDialog : Window
 
         if (danger)
         {
-            ConfirmButton.Background = Brush("#FFB5A7");
-            IconBadge.Background = Brush("#FFE3DC");
+            ConfirmButton.SetResourceReference(System.Windows.Controls.Control.BackgroundProperty, "DangerBrush");
+            IconBadge.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "DangerSoftBrush");
         }
         else
         {
-            ConfirmButton.Background = Brush("#FFC8DD");
+            ConfirmButton.SetResourceReference(System.Windows.Controls.Control.BackgroundProperty, "PinkBrush");
         }
-    }
-
-    private static SolidColorBrush Brush(string hex)
-    {
-        var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
-        brush.Freeze();
-        return brush;
+        ConfirmButton.SetResourceReference(System.Windows.Controls.Control.ForegroundProperty, "OnPastelBrush");
     }
 
     private void Confirm_Click(object sender, RoutedEventArgs e) => DialogResult = true;

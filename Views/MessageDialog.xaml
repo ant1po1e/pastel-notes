@@ -5,21 +5,37 @@
         ResizeMode="NoResize" SizeToContent="WidthAndHeight" ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
         FontFamily="{StaticResource AppFont}" FontSize="14" FontWeight="Medium"
-        Foreground="{StaticResource TextBrush}"
+        Foreground="{DynamicResource TextBrush}"
         KeyDown="Window_KeyDown">
 
     <Window.Triggers>
         <EventTrigger RoutedEvent="FrameworkElement.Loaded">
             <BeginStoryboard>
                 <Storyboard>
-                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.15"/>
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.16"/>
+                    <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleX"
+                                     From="0.92" To="1" Duration="0:0:0.2">
+                        <DoubleAnimation.EasingFunction>
+                            <BackEase EasingMode="EaseOut" Amplitude="0.3"/>
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <DoubleAnimation Storyboard.TargetName="CardScale" Storyboard.TargetProperty="ScaleY"
+                                     From="0.92" To="1" Duration="0:0:0.2">
+                        <DoubleAnimation.EasingFunction>
+                            <BackEase EasingMode="EaseOut" Amplitude="0.3"/>
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
                 </Storyboard>
             </BeginStoryboard>
         </EventTrigger>
     </Window.Triggers>
 
-    <Border Margin="24" Width="390" Background="White" CornerRadius="12" Padding="22,22,22,18"
+    <Border Margin="24" Width="390" Background="{DynamicResource CardBrush}" CornerRadius="12" Padding="22,22,22,18"
+            RenderTransformOrigin="0.5,0.5"
             MouseLeftButtonDown="Card_MouseLeftButtonDown">
+        <Border.RenderTransform>
+            <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1"/>
+        </Border.RenderTransform>
         <Border.Effect>
             <DropShadowEffect BlurRadius="28" ShadowDepth="4" Direction="270" Color="#6B4E9B" Opacity="0.22"/>
         </Border.Effect>
@@ -31,7 +47,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <Border x:Name="IconBadge" Width="40" Height="40" CornerRadius="8" Background="#F1E9FA"
+                <Border x:Name="IconBadge" Width="40" Height="40" CornerRadius="8" Background="{DynamicResource LavenderSoftBrush}"
                         VerticalAlignment="Top">
                     <TextBlock x:Name="IconText" FontFamily="{StaticResource IconFont}" FontSize="17"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -40,7 +56,7 @@
                 <StackPanel Grid.Column="1" Margin="14,0,0,0">
                     <TextBlock x:Name="TitleText" FontSize="17" FontWeight="Bold" TextWrapping="Wrap"/>
                     <TextBlock x:Name="MessageText" Margin="0,6,0,0" TextWrapping="Wrap" LineHeight="20"
-                               Foreground="#7A7490"/>
+                               Foreground="{DynamicResource MessageBrush}"/>
                 </StackPanel>
             </Grid>
 

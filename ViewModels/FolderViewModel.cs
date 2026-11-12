@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Media;
 using PastelNotes.Infrastructure;
 using PastelNotes.Models;
+using PastelNotes.Services;
 
 namespace PastelNotes.ViewModels;
 
@@ -31,13 +32,25 @@ public class FolderViewModel : ObservableObject
             if (p is string hex) ColorHex = hex;
             IsPaletteOpen = false;
         });
+
+        ThemeService.Changed += () => OnPropertyChanged(nameof(SoftBrush));
     }
 
     public Guid Id { get; }
     public ObservableCollection<NoteViewModel> Notes { get; } = new();
     public string[] Palette => Palettes.Colors;
 
-    public string Name { get => _name; set => Set(ref _name, value ?? ""); }
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (Set(ref _name, value ?? ""))
+                OnPropertyChanged(nameof(Initial));
+        }
+    }
+
+    public string Initial => string.IsNullOrWhiteSpace(_name) ? "?" : _name.Trim().Substring(0, 1).ToUpperInvariant();
 
     public string ColorHex
     {
@@ -56,7 +69,7 @@ public class FolderViewModel : ObservableObject
 
     public Brush Brush => Make(ColorHex, 255);
 
-    public Brush SoftBrush => Make(ColorHex, 0x8C);
+    public Brush SoftBrush => Make(ColorHex, ThemeService.IsDark ? (byte)0x55 : (byte)0x8C);
 
     public RelayCommand ToggleCommand { get; }
     public RelayCommand RenameCommand { get; }

@@ -1,0 +1,35 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="AppBgBrush" Color="#1C1925"/>
+    <SolidColorBrush x:Key="SidebarBrush" Color="#242030"/>
+    <SolidColorBrush x:Key="CardBrush" Color="#2D2939"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#ECE8F5"/>
+    <SolidColorBrush x:Key="MutedBrush" Color="#9C95B0"/>
+    <SolidColorBrush x:Key="LavenderBrush" Color="#6E5E94"/>
+    <SolidColorBrush x:Key="LavenderSoftBrush" Color="#3A3450"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#B79CED"/>
+    <SolidColorBrush x:Key="PinkBrush" Color="#FFC8DD"/>
+    <SolidColorBrush x:Key="MintBrush" Color="#BDEBD2"/>
+    <SolidColorBrush x:Key="MintDeepBrush" Color="#8FD3AE"/>
+    <SolidColorBrush x:Key="SelectionBrush" Color="#6E5E94"/>
+    <SolidColorBrush x:Key="OnPastelBrush" Color="#3B3550"/>
+    <SolidColorBrush x:Key="OverlayBrush" Color="#22FFFFFF"/>
+    <SolidColorBrush x:Key="OverlayPressedBrush" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="IconHoverBrush" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="HoverSoftBrush" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="InputOverlayBrush" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="ScrollThumbBrush" Color="#4A4363"/>
+    <SolidColorBrush x:Key="BulletBrush" Color="#B79CED"/>
+    <SolidColorBrush x:Key="CodeBgBrush" Color="#1F1B29"/>
+    <SolidColorBrush x:Key="CodeInlineBrush" Color="#FFB5D5"/>
+    <SolidColorBrush x:Key="LinkBrush" Color="#B79CED"/>
+    <SolidColorBrush x:Key="TableBorderBrush" Color="#4A4363"/>
+    <SolidColorBrush x:Key="TableHeaderBrush" Color="#3A3450"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#FFB5A7"/>
+    <SolidColorBrush x:Key="DangerSoftBrush" Color="#5A3A3F"/>
+    <SolidColorBrush x:Key="MessageBrush" Color="#B8B2C9"/>
+    <SolidColorBrush x:Key="ImageChipBrush" Color="#99000000"/>
+    <SolidColorBrush x:Key="GuideBrush" Color="#54496E"/>
+    <SolidColorBrush x:Key="BlockSelectionBrush" Color="#666E5E94"/>
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#3A3450"/>
+</ResourceDictionary>

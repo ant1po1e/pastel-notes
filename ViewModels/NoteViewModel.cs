@@ -10,7 +10,7 @@ namespace PastelNotes.ViewModels;
 
 public class NoteViewModel : ObservableObject
 {
-    private static readonly CultureInfo UiCulture = CultureInfo.GetCultureInfo("en-US");
+    private static readonly CultureInfo UiCulture = CultureInfo.InvariantCulture;
 
     private string _title;
     private string _content;

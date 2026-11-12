@@ -24,7 +24,16 @@ public class NoteEditorViewModel : ObservableObject
         ["[ ] "] = BlockType.Checklist,
         ["- [ ] "] = BlockType.Checklist,
         ["> "] = BlockType.Branch,
+        ["```"] = BlockType.CodeBlock,
     };
+
+    private sealed record Snapshot(string Markdown, int BlockIndex);
+
+    private readonly List<Snapshot> _undo = new();
+    private readonly List<Snapshot> _redo = new();
+    private string _current = "";
+    private DateTime _lastChange = DateTime.MinValue;
+    private bool _forceStep;
 
     private bool _loading;
     private bool _refreshing;
@@ -41,6 +50,10 @@ public class NoteEditorViewModel : ObservableObject
     public BlockViewModel? CurrentBlock { get; set; }
 
     public event Action<string>? ContentChanged;
+
+    public event Action<int>? HistoryRestored;
+
+    public event Action<BlockViewModel>? FocusRequested;
 
     public string RawText
     {
@@ -67,7 +80,7 @@ public class NoteEditorViewModel : ObservableObject
             }
             else
             {
-                Load(_rawText);
+                LoadInternal(_rawText);
                 RaiseChanged();
             }
             OnPropertyChanged();
@@ -77,6 +90,16 @@ public class NoteEditorViewModel : ObservableObject
     public string Serialize() => MarkdownSerializer.Serialize(Blocks);
 
     public void Load(string? markdown)
+    {
+        LoadInternal(markdown);
+        _undo.Clear();
+        _redo.Clear();
+        _current = Serialize();
+        _lastChange = DateTime.MinValue;
+        _forceStep = true;
+    }
+
+    private void LoadInternal(string? markdown)
     {
         _loading = true;
         try
@@ -122,7 +145,12 @@ public class NoteEditorViewModel : ObservableObject
             case nameof(BlockViewModel.Level):
             case nameof(BlockViewModel.IsChecked):
             case nameof(BlockViewModel.IsExpanded):
+                _forceStep = true;
                 RefreshStructure();
+                RaiseChanged();
+                break;
+            case nameof(BlockViewModel.Language):
+            case nameof(BlockViewModel.TableRevision):
                 RaiseChanged();
                 break;
         }
@@ -131,7 +159,104 @@ public class NoteEditorViewModel : ObservableObject
     private void RaiseChanged()
     {
         if (_loading) return;
-        ContentChanged?.Invoke(Serialize());
+        string markdown = Serialize();
+        RecordHistory(markdown);
+        ContentChanged?.Invoke(markdown);
+    }
+
+    private int CurrentIndex() => CurrentBlock == null ? -1 : Blocks.IndexOf(CurrentBlock);
+
+    private void RecordHistory(string markdown)
+    {
+        if (markdown == _current) return;
+
+        var now = DateTime.UtcNow;
+        if (_forceStep || _undo.Count == 0 || (now - _lastChange).TotalMilliseconds > 800)
+        {
+            _undo.Add(new Snapshot(_current, CurrentIndex()));
+            if (_undo.Count > 100) _undo.RemoveAt(0);
+        }
+
+        _forceStep = false;
+        _redo.Clear();
+        _current = markdown;
+        _lastChange = now;
+    }
+
+    public bool Undo()
+    {
+        if (_isRawMode || _undo.Count == 0) return false;
+        var target = _undo[^1];
+        _undo.RemoveAt(_undo.Count - 1);
+        _redo.Add(new Snapshot(_current, CurrentIndex()));
+        Restore(target);
+        return true;
+    }
+
+    public bool Redo()
+    {
+        if (_isRawMode || _redo.Count == 0) return false;
+        var target = _redo[^1];
+        _redo.RemoveAt(_redo.Count - 1);
+        _undo.Add(new Snapshot(_current, CurrentIndex()));
+        Restore(target);
+        return true;
+    }
+
+    private void Restore(Snapshot snapshot)
+    {
+        LoadInternal(snapshot.Markdown);
+        _current = snapshot.Markdown;
+        _lastChange = DateTime.MinValue;
+        _forceStep = true;
+        ContentChanged?.Invoke(snapshot.Markdown);
+        HistoryRestored?.Invoke(snapshot.BlockIndex);
+    }
+
+    public bool HasBlockSelection => Blocks.Any(b => b.IsSelected);
+
+    public void ClearSelection()
+    {
+        foreach (var b in Blocks)
+            if (b.IsSelected) b.IsSelected = false;
+    }
+
+    public void SelectAll()
+    {
+        foreach (var b in Blocks) b.IsSelected = true;
+    }
+
+    public void SelectRange(int from, int to)
+    {
+        if (Blocks.Count == 0) return;
+        int low = Math.Clamp(Math.Min(from, to), 0, Blocks.Count - 1);
+        int high = Math.Clamp(Math.Max(from, to), 0, Blocks.Count - 1);
+        if (Blocks[high].Type == BlockType.Branch && !Blocks[high].IsExpanded)
+            high = Math.Min(Blocks.Count - 1, high + SubtreeCount(high) - 1);
+
+        for (int i = 0; i < Blocks.Count; i++)
+            Blocks[i].IsSelected = i >= low && i <= high;
+    }
+
+    public string SerializeSelection()
+    {
+        var selected = Blocks.Where(b => b.IsSelected).ToList();
+        if (selected.Count == 0) return "";
+        return MarkdownSerializer.Serialize(selected, selected.Min(b => b.Level));
+    }
+
+    public BlockViewModel? RemoveSelected()
+    {
+        var selected = Blocks.Where(b => b.IsSelected).ToList();
+        if (selected.Count == 0) return null;
+
+        int first = Blocks.IndexOf(selected[0]);
+        Batch(() =>
+        {
+            foreach (var b in selected) Blocks.Remove(b);
+            if (Blocks.Count == 0) Blocks.Add(new BlockViewModel());
+        });
+        return Blocks[Math.Min(first, Blocks.Count - 1)];
     }
 
     private void Batch(Action action)
@@ -139,6 +264,7 @@ public class NoteEditorViewModel : ObservableObject
         _refreshing = true;
         try { action(); }
         finally { _refreshing = false; }
+        _forceStep = true;
         RefreshStructure();
         RaiseChanged();
     }
@@ -186,6 +312,23 @@ public class NoteEditorViewModel : ObservableObject
                     b.Progress = "";
                 }
             }
+
+            var hasLater = new bool[34];
+            for (int i = Blocks.Count - 1; i >= 0; i--)
+            {
+                var b = Blocks[i];
+                int level = Math.Min(b.Level, 31);
+
+                int mask = 0;
+                for (int c = 0; c < level; c++)
+                    if (hasLater[c + 1]) mask |= 1 << c;
+
+                b.GuideMask = mask;
+                b.HasChildren = i + 1 < Blocks.Count && Blocks[i + 1].Level > b.Level && Blocks[i + 1].IsVisible;
+
+                hasLater[level] = true;
+                for (int l = level + 1; l < hasLater.Length; l++) hasLater[l] = false;
+            }
         }
         finally { _refreshing = false; }
     }
@@ -196,6 +339,7 @@ public class NoteEditorViewModel : ObservableObject
         {
             b.Type = type;
             b.Text = "";
+            if (type == BlockType.CodeBlock) FocusRequested?.Invoke(b);
         }
     }
 
@@ -233,6 +377,54 @@ public class NoteEditorViewModel : ObservableObject
             Blocks.Insert(index + 1, nb);
         });
         return nb;
+    }
+
+    public BlockViewModel InsertTextAfter(BlockViewModel b)
+    {
+        int index = Blocks.IndexOf(b);
+        bool hasChildren = index >= 0 && index + 1 < Blocks.Count && Blocks[index + 1].Level > b.Level;
+        var nb = new BlockViewModel { Level = hasChildren ? b.Level + 1 : b.Level };
+        Batch(() => Blocks.Insert(index < 0 ? Blocks.Count : index + 1, nb));
+        return nb;
+    }
+
+    public BlockViewModel InsertTable(BlockViewModel? after)
+    {
+        var block = new BlockViewModel { Type = BlockType.Table };
+        block.Table = TableViewModel.CreateDefault(block);
+        InsertBlock(block, after);
+        return block;
+    }
+
+    public BlockViewModel InsertImage(BlockViewModel? after, string imageFile)
+    {
+        var block = new BlockViewModel { Type = BlockType.Image, ImageFile = imageFile };
+        InsertBlock(block, after);
+        return block;
+    }
+
+    private void InsertBlock(BlockViewModel block, BlockViewModel? after)
+    {
+        Batch(() =>
+        {
+            int index = after == null ? -1 : Blocks.IndexOf(after);
+            if (index < 0)
+            {
+                block.Level = 0;
+                index = Blocks.Count;
+            }
+            else
+            {
+                int count = SubtreeCount(index);
+                block.Level = after!.Level;
+                bool emptyLine = count == 1 && after.Type == BlockType.Text && after.Text.Length == 0;
+                if (emptyLine) Blocks.RemoveAt(index);
+                else index += count;
+            }
+
+            Blocks.Insert(index, block);
+            if (index == Blocks.Count - 1) Blocks.Add(new BlockViewModel { Level = block.Level });
+        });
     }
 
     public BlockViewModel? MergeIntoPrevious(BlockViewModel b, out int caret)
@@ -316,7 +508,16 @@ public class NoteEditorViewModel : ObservableObject
         });
     }
 
-    public void SetType(BlockViewModel b, BlockType type) => b.Type = type;
+    public void SetType(BlockViewModel b, BlockType type)
+    {
+        if (b.Type == BlockType.Image || b.Type == BlockType.Table) return;
+        if (type == BlockType.Image || type == BlockType.Table) return;
+
+        if (b.Type == BlockType.CodeBlock && type != BlockType.CodeBlock)
+            b.Text = b.Text.Replace("\r\n", " ").Replace('\n', ' ');
+
+        b.Type = type;
+    }
 
     public void Toggle(BlockViewModel b)
     {
@@ -345,7 +546,7 @@ public class NoteEditorViewModel : ObservableObject
         int index = Blocks.IndexOf(target);
         if (index < 0) index = Blocks.Count - 1;
         int baseLevel = target.Level;
-        bool replace = string.IsNullOrEmpty(target.Text);
+        bool replace = string.IsNullOrEmpty(target.Text) && target.Type == BlockType.Text;
 
         Batch(() =>
         {
