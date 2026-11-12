@@ -25,6 +25,8 @@ public class BlockViewModel : ObservableObject
     private TableViewModel? _table;
     private bool _isSelected;
     private int _guideMask;
+    private bool _isShown = true;
+    private bool _isCollapsing;
     private bool _hasChildren;
 
     public string Text { get => _text; set => Set(ref _text, value ?? ""); }
@@ -68,6 +70,10 @@ public class BlockViewModel : ObservableObject
                 OnPropertyChanged(nameof(IndentMargin));
         }
     }
+
+    public bool IsShown { get => _isShown; set => Set(ref _isShown, value); }
+
+    public bool IsCollapsing { get => _isCollapsing; set => Set(ref _isCollapsing, value); }
 
     public int GuideMask { get => _guideMask; set => Set(ref _guideMask, value); }
 

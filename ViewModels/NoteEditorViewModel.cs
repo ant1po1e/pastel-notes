@@ -40,9 +40,14 @@ public class NoteEditorViewModel : ObservableObject
     private bool _isRawMode;
     private string _rawText = "";
 
+    private readonly DispatcherTimer _hideTimer;
+    private readonly List<BlockViewModel> _pendingHide = new();
+
     public NoteEditorViewModel()
     {
         Blocks.CollectionChanged += OnBlocksChanged;
+        _hideTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(190) };
+        _hideTimer.Tick += (_, _) => FinalizeHidden();
     }
 
     public ObservableCollection<BlockViewModel> Blocks { get; } = new();
@@ -101,6 +106,8 @@ public class NoteEditorViewModel : ObservableObject
 
     private void LoadInternal(string? markdown)
     {
+        _hideTimer.Stop();
+        _pendingHide.Clear();
         _loading = true;
         try
         {
@@ -112,7 +119,7 @@ public class NoteEditorViewModel : ObservableObject
             if (_isRawMode) RawText = markdown ?? "";
         }
         finally { _loading = false; }
-        RefreshStructure();
+        RefreshStructure(false);
     }
 
     private void OnBlocksChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -269,7 +276,44 @@ public class NoteEditorViewModel : ObservableObject
         RaiseChanged();
     }
 
-    private void RefreshStructure()
+    private void SyncShown(BlockViewModel b, bool animate)
+    {
+        if (b.IsVisible)
+        {
+            _pendingHide.Remove(b);
+            b.IsCollapsing = false;
+            b.IsShown = true;
+            return;
+        }
+
+        if (!b.IsShown || _pendingHide.Contains(b)) return;
+
+        if (!animate)
+        {
+            b.IsShown = false;
+            return;
+        }
+
+        b.IsCollapsing = true;
+        _pendingHide.Add(b);
+        _hideTimer.Stop();
+        _hideTimer.Start();
+    }
+
+    private void FinalizeHidden()
+    {
+        _hideTimer.Stop();
+        var pending = _pendingHide.ToList();
+        _pendingHide.Clear();
+
+        foreach (var b in pending)
+        {
+            if (!b.IsVisible) b.IsShown = false;
+            b.IsCollapsing = false;
+        }
+    }
+
+    private void RefreshStructure(bool animate = true)
     {
         _refreshing = true;
         try
@@ -295,6 +339,8 @@ public class NoteEditorViewModel : ObservableObject
                     b.IsVisible = true;
                     if (b.Type == BlockType.Branch && !b.IsExpanded) hideBelow = b.Level;
                 }
+
+                SyncShown(b, animate);
 
                 if (b.Type == BlockType.Branch)
                 {

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.ObjectModel;
 using System.Windows.Media;
+using System.Windows.Threading;
 using PastelNotes.Infrastructure;
 using PastelNotes.Models;
 using PastelNotes.Services;
@@ -17,6 +18,9 @@ public class FolderViewModel : ObservableObject
     private bool _isExpanded;
     private bool _isEditing;
     private bool _isPaletteOpen;
+    private bool _isListShown;
+    private bool _isListCollapsing;
+    private DispatcherTimer? _hideTimer;
 
     public FolderViewModel(FolderData data)
     {
@@ -24,6 +28,7 @@ public class FolderViewModel : ObservableObject
         _name = data.Name;
         _colorHex = data.ColorHex;
         _isExpanded = data.IsExpanded;
+        _isListShown = data.IsExpanded;
 
         ToggleCommand = new RelayCommand(() => IsExpanded = !IsExpanded);
         RenameCommand = new RelayCommand(() => IsEditing = true);
@@ -63,7 +68,44 @@ public class FolderViewModel : ObservableObject
         }
     }
 
-    public bool IsExpanded { get => _isExpanded; set => Set(ref _isExpanded, value); }
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set
+        {
+            if (Set(ref _isExpanded, value)) OnExpandedChanged();
+        }
+    }
+
+    public bool IsListShown { get => _isListShown; private set => Set(ref _isListShown, value); }
+
+    public bool IsListCollapsing { get => _isListCollapsing; private set => Set(ref _isListCollapsing, value); }
+
+    private void OnExpandedChanged()
+    {
+        _hideTimer?.Stop();
+
+        if (_isExpanded)
+        {
+            IsListCollapsing = false;
+            IsListShown = true;
+            return;
+        }
+
+        IsListCollapsing = true;
+        if (_hideTimer == null)
+        {
+            _hideTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(220) };
+            _hideTimer.Tick += (_, _) =>
+            {
+                _hideTimer.Stop();
+                if (_isExpanded) return;
+                IsListShown = false;
+                IsListCollapsing = false;
+            };
+        }
+        _hideTimer.Start();
+    }
     public bool IsEditing { get => _isEditing; set => Set(ref _isEditing, value); }
     public bool IsPaletteOpen { get => _isPaletteOpen; set => Set(ref _isPaletteOpen, value); }
 

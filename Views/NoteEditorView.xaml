@@ -218,7 +218,7 @@
         </Style>
 
         <DataTemplate x:Key="BlockTemplate" DataType="{x:Type vm:BlockViewModel}">
-            <Grid x:Name="RowHost" Visibility="Collapsed">
+            <Grid x:Name="RowHost">
                 <Grid.LayoutTransform>
                     <ScaleTransform x:Name="RowScale" ScaleY="1"/>
                 </Grid.LayoutTransform>
@@ -234,39 +234,41 @@
             </Grid>
 
             <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding IsVisible}" Value="True">
-                    <DataTrigger.EnterActions>
+                <DataTrigger Binding="{Binding IsShown}" Value="False">
+                    <Setter TargetName="RowHost" Property="Visibility" Value="Collapsed"/>
+                    <DataTrigger.ExitActions>
                         <BeginStoryboard>
                             <Storyboard>
-                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="RowHost" Storyboard.TargetProperty="Visibility">
-                                    <DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Visible}"/>
-                                </ObjectAnimationUsingKeyFrames>
-                                <DoubleAnimation Storyboard.TargetName="RowScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.2">
+                                <DoubleAnimation Storyboard.TargetName="RowScale" Storyboard.TargetProperty="ScaleY"
+                                                 From="0" To="1" Duration="0:0:0.2" FillBehavior="Stop">
                                     <DoubleAnimation.EasingFunction>
-                                        <CubicEase EasingMode="EaseOut"/>
-                                    </DoubleAnimation.EasingFunction>
+                                <CubicEase EasingMode="EaseOut"/>
+                            </DoubleAnimation.EasingFunction>
                                 </DoubleAnimation>
-                                <DoubleAnimation Storyboard.TargetName="RowHost" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
+                                <DoubleAnimation Storyboard.TargetName="RowHost" Storyboard.TargetProperty="Opacity"
+                                                 From="0" To="1" Duration="0:0:0.2" FillBehavior="Stop"/>
                             </Storyboard>
                         </BeginStoryboard>
-                    </DataTrigger.EnterActions>
+                    </DataTrigger.ExitActions>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding IsVisible}" Value="False">
+                <DataTrigger Binding="{Binding IsCollapsing}" Value="True">
                     <DataTrigger.EnterActions>
-                        <BeginStoryboard>
+                        <BeginStoryboard x:Name="RowCollapseAnim">
                             <Storyboard>
-                                <DoubleAnimation Storyboard.TargetName="RowScale" Storyboard.TargetProperty="ScaleY" To="0" Duration="0:0:0.16">
+                                <DoubleAnimation Storyboard.TargetName="RowScale" Storyboard.TargetProperty="ScaleY"
+                                                 To="0" Duration="0:0:0.16">
                                     <DoubleAnimation.EasingFunction>
-                                        <CubicEase EasingMode="EaseIn"/>
-                                    </DoubleAnimation.EasingFunction>
+                                <CubicEase EasingMode="EaseIn"/>
+                            </DoubleAnimation.EasingFunction>
                                 </DoubleAnimation>
-                                <DoubleAnimation Storyboard.TargetName="RowHost" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.16"/>
-                                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="RowHost" Storyboard.TargetProperty="Visibility">
-                                    <DiscreteObjectKeyFrame KeyTime="0:0:0.16" Value="{x:Static Visibility.Collapsed}"/>
-                                </ObjectAnimationUsingKeyFrames>
+                                <DoubleAnimation Storyboard.TargetName="RowHost" Storyboard.TargetProperty="Opacity"
+                                                 To="0" Duration="0:0:0.16"/>
                             </Storyboard>
                         </BeginStoryboard>
                     </DataTrigger.EnterActions>
+                    <DataTrigger.ExitActions>
+                        <RemoveStoryboard BeginStoryboardName="RowCollapseAnim"/>
+                    </DataTrigger.ExitActions>
                 </DataTrigger>
 
                 <DataTrigger Binding="{Binding Type}" Value="Branch">
